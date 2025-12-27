@@ -7,6 +7,8 @@ import { CATEGORY_LABELS, CATEGORY_COLORS } from '@/lib/constants';
 import { formatNumber } from '@/lib/utils';
 import { ArrowLeft, Building2, Home, Clock, CheckCircle2 } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 interface PageProps {
   params: Promise<{ name: string }>;
 }
@@ -185,11 +187,4 @@ export default async function NeighbourhoodPage({ params }: PageProps) {
       </main>
     </div>
   );
-}
-
-export async function generateStaticParams() {
-  const stats = getNeighbourhoodStats();
-  return stats.map((s) => ({
-    name: encodeURIComponent(s.name),
-  }));
 }

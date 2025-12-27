@@ -9,18 +9,23 @@ const DB_PATH = path.join(process.cwd(), 'data', 'permits.db');
 
 let db: Database.Database | null = null;
 
-export function getDatabase(): Database.Database {
+export function getDatabase(): Database.Database | null {
   if (!db) {
-    // Ensure data directory exists
-    const fs = require('fs');
-    const dataDir = path.dirname(DB_PATH);
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
-    }
+    try {
+      // Ensure data directory exists
+      const fs = require('fs');
+      const dataDir = path.dirname(DB_PATH);
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
 
-    db = new Database(DB_PATH);
-    db.pragma('journal_mode = WAL');
-    initializeSchema(db);
+      db = new Database(DB_PATH);
+      db.pragma('journal_mode = WAL');
+      initializeSchema(db);
+    } catch (error) {
+      console.error('Failed to initialize database:', error);
+      return null;
+    }
   }
   return db;
 }
@@ -89,6 +94,7 @@ function initializeSchema(database: Database.Database): void {
 
 export function upsertPermit(permit: ProcessedPermit): void {
   const db = getDatabase();
+  if (!db) return;
   const stmt = db.prepare(`
     INSERT INTO permits (
       id, permit_num, revision_num, permit_type, structure_type, work,
@@ -149,6 +155,7 @@ export function upsertPermit(permit: ProcessedPermit): void {
 
 export function bulkUpsertPermits(permits: ProcessedPermit[]): number {
   const db = getDatabase();
+  if (!db) return 0;
   const upsert = db.transaction((permits: ProcessedPermit[]) => {
     for (const permit of permits) {
       upsertPermit(permit);
@@ -161,7 +168,8 @@ export function bulkUpsertPermits(permits: ProcessedPermit[]): number {
 
 export function getAllPermits(category?: PermitCategory): ProcessedPermit[] {
   const db = getDatabase();
-  let query = 'SELECT * FROM permits WHERE category != "other"';
+  if (!db) return [];
+  let query = "SELECT * FROM permits WHERE category != 'other'";
   const params: Record<string, string> = {};
 
   if (category) {
@@ -177,9 +185,10 @@ export function getAllPermits(category?: PermitCategory): ProcessedPermit[] {
 
 export function getPermitsByNeighbourhood(neighbourhood: string): ProcessedPermit[] {
   const db = getDatabase();
+  if (!db) return [];
   const rows = db
     .prepare(
-      'SELECT * FROM permits WHERE neighbourhood = ? AND category != "other" ORDER BY application_date DESC'
+      `SELECT * FROM permits WHERE neighbourhood = ? AND category != 'other' ORDER BY application_date DESC`
     )
     .all(neighbourhood) as Record<string, unknown>[];
 
@@ -188,6 +197,17 @@ export function getPermitsByNeighbourhood(neighbourhood: string): ProcessedPermi
 
 export function getKPIData(): KPIData {
   const db = getDatabase();
+  if (!db) {
+    return {
+      totalActivePermits: 0,
+      totalCompletedPermits: 0,
+      totalUnitsCreated: 0,
+      avgProcessingDays: 0,
+      permitsThisYear: 0,
+      permitsLastYear: 0,
+      yearOverYearChange: 0,
+    };
+  }
   const currentYear = new Date().getFullYear();
   const lastYear = currentYear - 1;
 
@@ -227,6 +247,7 @@ export function getKPIData(): KPIData {
 
 export function getNeighbourhoodStats(): NeighbourhoodStats[] {
   const db = getDatabase();
+  if (!db) return [];
   const rows = db
     .prepare(
       `
@@ -274,6 +295,7 @@ export function getNeighbourhoodStats(): NeighbourhoodStats[] {
 
 export function getMonthlyTrends(months: number = 24): { month: string; count: number; category: string }[] {
   const db = getDatabase();
+  if (!db) return [];
   const rows = db
     .prepare(
       `
@@ -295,6 +317,7 @@ export function getMonthlyTrends(months: number = 24): { month: string; count: n
 
 export function getCategoryBreakdown(): { category: string; count: number; units: number }[] {
   const db = getDatabase();
+  if (!db) return [];
   const rows = db
     .prepare(
       `
@@ -315,6 +338,7 @@ export function getCategoryBreakdown(): { category: string; count: number; units
 
 export function getProcessingTimeDistribution(): { range: string; count: number }[] {
   const db = getDatabase();
+  if (!db) return [];
   const rows = db
     .prepare(
       `
@@ -349,6 +373,7 @@ export function getProcessingTimeDistribution(): { range: string; count: number 
 
 export function getPermitsWithCoordinates(): { latitude: number; longitude: number; category: string; address: string }[] {
   const db = getDatabase();
+  if (!db) return [];
   const rows = db
     .prepare(
       `
