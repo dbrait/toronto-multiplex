@@ -51,35 +51,39 @@ async function main() {
 
     // Log sync
     const db = getDatabase();
-    db.prepare(
+    if (db) {
+      db.prepare(
+        `
+        INSERT INTO sync_log (sync_type, records_added, completed_at, status)
+        VALUES ('weekly_sync', ?, datetime('now'), 'completed')
       `
-      INSERT INTO sync_log (sync_type, records_added, completed_at, status)
-      VALUES ('weekly_sync', ?, datetime('now'), 'completed')
-    `
-    ).run(count);
+      ).run(count);
+    }
 
     const duration = Date.now() - startTime;
     console.log(`\nSync completed in ${duration}ms`);
 
     // Print summary
-    const stats = db
-      .prepare(
-        `
-      SELECT
-        category,
-        COUNT(*) as count
-      FROM permits
-      WHERE category != 'other'
-      GROUP BY category
-      ORDER BY count DESC
+    if (db) {
+      const stats = db
+        .prepare(
+          `
+        SELECT
+          category,
+          COUNT(*) as count
+        FROM permits
+        WHERE category != 'other'
+        GROUP BY category
+        ORDER BY count DESC
     `
       )
       .all() as { category: string; count: number }[];
 
-    console.log('\nPermit Summary:');
-    console.log('---------------');
-    for (const { category, count } of stats) {
-      console.log(`  ${category}: ${count}`);
+      console.log('\nPermit Summary:');
+      console.log('---------------');
+      for (const { category, count } of stats) {
+        console.log(`  ${category}: ${count}`);
+      }
     }
 
     process.exit(0);
@@ -87,12 +91,14 @@ async function main() {
     console.error('\nSync failed:', error);
 
     const db = getDatabase();
-    db.prepare(
+    if (db) {
+      db.prepare(
+        `
+        INSERT INTO sync_log (sync_type, completed_at, status, error_message)
+        VALUES ('weekly_sync', datetime('now'), 'failed', ?)
       `
-      INSERT INTO sync_log (sync_type, completed_at, status, error_message)
-      VALUES ('weekly_sync', datetime('now'), 'failed', ?)
-    `
-    ).run((error as Error).message);
+      ).run((error as Error).message);
+    }
 
     process.exit(1);
   }
