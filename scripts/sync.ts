@@ -4,10 +4,14 @@
  * Weekly Data Sync Script
  *
  * This script fetches the latest permit data from Toronto Open Data
- * and updates the local SQLite database.
+ * and updates the Turso database.
  *
  * Usage:
  *   npx tsx scripts/sync.ts
+ *
+ * Environment variables required:
+ *   TURSO_DATABASE_URL - Turso database URL
+ *   TURSO_AUTH_TOKEN - Turso auth token
  *
  * For weekly automation:
  *   - Use cron: 0 0 * * 0 cd /path/to/project && npx tsx scripts/sync.ts
@@ -16,7 +20,7 @@
  */
 
 import { fetchAllActivePermits } from '../src/lib/toronto-api';
-import { bulkUpsertPermits, getDatabase } from '../src/lib/db';
+import { bulkUpsertPermits, logSync, getClient } from '../src/lib/db-turso';
 import { processPermit, isGentleDensityPermit } from '../src/lib/utils';
 
 async function main() {
@@ -26,6 +30,13 @@ async function main() {
   const startTime = Date.now();
 
   try {
+    // Check database connection
+    const db = getClient();
+    if (!db) {
+      console.error('Database not configured. Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN environment variables.');
+      process.exit(1);
+    }
+
     // Fetch all active permits
     console.log('\nFetching permits from Toronto Open Data...');
     const rawPermits = await fetchAllActivePermits();
@@ -46,59 +57,37 @@ async function main() {
 
     // Upsert to database
     console.log('\nUpserting to database...');
-    const count = bulkUpsertPermits(processed);
+    const count = await bulkUpsertPermits(processed);
     console.log(`Upserted ${count} permits`);
 
     // Log sync
-    const db = getDatabase();
-    if (db) {
-      db.prepare(
-        `
-        INSERT INTO sync_log (sync_type, records_added, completed_at, status)
-        VALUES ('weekly_sync', ?, datetime('now'), 'completed')
-      `
-      ).run(count);
-    }
+    await logSync('weekly_sync', count, 'completed');
 
     const duration = Date.now() - startTime;
     console.log(`\nSync completed in ${duration}ms`);
 
     // Print summary
-    if (db) {
-      const stats = db
-        .prepare(
-          `
-        SELECT
-          category,
-          COUNT(*) as count
-        FROM permits
-        WHERE category != 'other'
-        GROUP BY category
-        ORDER BY count DESC
-    `
-      )
-      .all() as { category: string; count: number }[];
+    const statsResult = await db.execute(`
+      SELECT
+        category,
+        COUNT(*) as count
+      FROM permits
+      WHERE category != 'other'
+      GROUP BY category
+      ORDER BY count DESC
+    `);
 
-      console.log('\nPermit Summary:');
-      console.log('---------------');
-      for (const { category, count } of stats) {
-        console.log(`  ${category}: ${count}`);
-      }
+    console.log('\nPermit Summary:');
+    console.log('---------------');
+    for (const row of statsResult.rows) {
+      console.log(`  ${row.category}: ${row.count}`);
     }
 
     process.exit(0);
   } catch (error) {
     console.error('\nSync failed:', error);
 
-    const db = getDatabase();
-    if (db) {
-      db.prepare(
-        `
-        INSERT INTO sync_log (sync_type, completed_at, status, error_message)
-        VALUES ('weekly_sync', datetime('now'), 'failed', ?)
-      `
-      ).run((error as Error).message);
-    }
+    await logSync('weekly_sync', 0, 'failed', (error as Error).message);
 
     process.exit(1);
   }

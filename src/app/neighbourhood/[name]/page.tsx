@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { DataTable } from '@/components/dashboard/data-table';
-import { getPermitsByNeighbourhood, getNeighbourhoodStats } from '@/lib/db';
+import { getPermitsByNeighbourhood, getNeighbourhoodStats } from '@/lib/db-turso';
 import { CATEGORY_LABELS, CATEGORY_COLORS } from '@/lib/constants';
 import { formatNumber } from '@/lib/utils';
 import { ArrowLeft, Building2, Home, Clock, CheckCircle2 } from 'lucide-react';
@@ -17,8 +17,8 @@ export default async function NeighbourhoodPage({ params }: PageProps) {
   const { name } = await params;
   const decodedName = decodeURIComponent(name);
 
-  const permits = getPermitsByNeighbourhood(decodedName);
-  const allStats = getNeighbourhoodStats();
+  const permits = await getPermitsByNeighbourhood(decodedName);
+  const allStats = await getNeighbourhoodStats();
   const stats = allStats.find((s) => s.name === decodedName);
 
   if (!stats || permits.length === 0) {

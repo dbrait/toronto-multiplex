@@ -7,39 +7,40 @@ import {
   getCategoryBreakdown,
   getProcessingTimeDistribution,
   getPermitsWithCoordinates,
-} from '@/lib/db';
+} from '@/lib/db-turso';
 import type { PermitCategory } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || 'all';
   const category = searchParams.get('category') as PermitCategory | null;
-  const neighbourhood = searchParams.get('neighbourhood');
 
   try {
     switch (type) {
       case 'kpi':
-        return NextResponse.json(getKPIData());
+        return NextResponse.json(await getKPIData());
 
       case 'neighbourhoods':
-        return NextResponse.json(getNeighbourhoodStats());
+        return NextResponse.json(await getNeighbourhoodStats());
 
       case 'trends':
         const months = parseInt(searchParams.get('months') || '24');
-        return NextResponse.json(getMonthlyTrends(months));
+        return NextResponse.json(await getMonthlyTrends(months));
 
       case 'categories':
-        return NextResponse.json(getCategoryBreakdown());
+        return NextResponse.json(await getCategoryBreakdown());
 
       case 'processing':
-        return NextResponse.json(getProcessingTimeDistribution());
+        return NextResponse.json(await getProcessingTimeDistribution());
 
       case 'map':
-        return NextResponse.json(getPermitsWithCoordinates());
+        return NextResponse.json(await getPermitsWithCoordinates());
 
       case 'all':
       default:
-        const permits = getAllPermits(category || undefined);
+        const permits = await getAllPermits(category || undefined);
         return NextResponse.json({
           permits,
           total: permits.length,

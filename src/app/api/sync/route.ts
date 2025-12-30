@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { fetchAllActivePermits } from '@/lib/toronto-api';
-import { bulkUpsertPermits, getDatabase } from '@/lib/db';
+import { bulkUpsertPermits, logSync, getClient } from '@/lib/db-turso';
 import { processPermit, isGentleDensityPermit } from '@/lib/utils';
 import type { RawPermit } from '@/lib/types';
 
@@ -39,20 +39,12 @@ export async function POST(request: Request) {
     }
 
     // Bulk upsert to database
-    const count = bulkUpsertPermits(processedPermits);
+    const count = await bulkUpsertPermits(processedPermits);
 
     const duration = Date.now() - startTime;
 
     // Log the sync
-    const db = getDatabase();
-    if (db) {
-      db.prepare(
-        `
-        INSERT INTO sync_log (sync_type, records_added, completed_at, status)
-        VALUES ('active_permits', ?, datetime('now'), 'completed')
-      `
-      ).run(count);
-    }
+    await logSync('active_permits', count, 'completed');
 
     return NextResponse.json({
       success: true,
@@ -67,15 +59,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('Sync error:', error);
 
-    const db = getDatabase();
-    if (db) {
-      db.prepare(
-        `
-        INSERT INTO sync_log (sync_type, completed_at, status, error_message)
-        VALUES ('active_permits', datetime('now'), 'failed', ?)
-      `
-      ).run((error as Error).message);
-    }
+    await logSync('active_permits', 0, 'failed', (error as Error).message);
 
     return NextResponse.json(
       {
@@ -204,31 +188,28 @@ function inferNeighbourhoodFromPostal(postalCode: string): string | null {
 // GET endpoint to check sync status
 export async function GET() {
   try {
-    const db = getDatabase();
+    const db = getClient();
     if (!db) {
       return NextResponse.json({
         totalPermits: 0,
         recentSyncs: [],
+        message: 'Database not configured. Set TURSO_DATABASE_URL and TURSO_AUTH_TOKEN.',
       });
     }
 
-    const lastSync = db
-      .prepare(
-        `
+    const lastSyncResult = await db.execute(`
       SELECT * FROM sync_log
       ORDER BY started_at DESC
       LIMIT 5
-    `
-      )
-      .all();
+    `);
 
-    const permitCount = db
-      .prepare("SELECT COUNT(*) as count FROM permits WHERE category != 'other'")
-      .get() as { count: number };
+    const permitCountResult = await db.execute(
+      "SELECT COUNT(*) as count FROM permits WHERE category != 'other'"
+    );
 
     return NextResponse.json({
-      totalPermits: permitCount.count,
-      recentSyncs: lastSync,
+      totalPermits: Number(permitCountResult.rows[0]?.count) || 0,
+      recentSyncs: lastSyncResult.rows,
     });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
