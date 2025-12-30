@@ -45,12 +45,14 @@ export async function POST(request: Request) {
 
     // Log the sync
     const db = getDatabase();
-    db.prepare(
+    if (db) {
+      db.prepare(
+        `
+        INSERT INTO sync_log (sync_type, records_added, completed_at, status)
+        VALUES ('active_permits', ?, datetime('now'), 'completed')
       `
-      INSERT INTO sync_log (sync_type, records_added, completed_at, status)
-      VALUES ('active_permits', ?, datetime('now'), 'completed')
-    `
-    ).run(count);
+      ).run(count);
+    }
 
     return NextResponse.json({
       success: true,
@@ -66,12 +68,14 @@ export async function POST(request: Request) {
     console.error('Sync error:', error);
 
     const db = getDatabase();
-    db.prepare(
+    if (db) {
+      db.prepare(
+        `
+        INSERT INTO sync_log (sync_type, completed_at, status, error_message)
+        VALUES ('active_permits', datetime('now'), 'failed', ?)
       `
-      INSERT INTO sync_log (sync_type, completed_at, status, error_message)
-      VALUES ('active_permits', datetime('now'), 'failed', ?)
-    `
-    ).run((error as Error).message);
+      ).run((error as Error).message);
+    }
 
     return NextResponse.json(
       {
@@ -201,6 +205,13 @@ function inferNeighbourhoodFromPostal(postalCode: string): string | null {
 export async function GET() {
   try {
     const db = getDatabase();
+    if (!db) {
+      return NextResponse.json({
+        totalPermits: 0,
+        recentSyncs: [],
+      });
+    }
+
     const lastSync = db
       .prepare(
         `
@@ -212,7 +223,7 @@ export async function GET() {
       .all();
 
     const permitCount = db
-      .prepare('SELECT COUNT(*) as count FROM permits WHERE category != "other"')
+      .prepare("SELECT COUNT(*) as count FROM permits WHERE category != 'other'")
       .get() as { count: number };
 
     return NextResponse.json({
