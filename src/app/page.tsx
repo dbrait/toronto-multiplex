@@ -4,7 +4,7 @@ import { KPICards } from '@/components/dashboard/kpi-cards';
 import { AllCharts } from '@/components/dashboard/charts';
 import { PermitMap } from '@/components/dashboard/map';
 import { DataTable } from '@/components/dashboard/data-table';
-import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare, Clock } from 'lucide-react';
+import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare, Clock, Calendar } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -168,6 +168,13 @@ export default async function Home() {
               >
                 <Clock className="h-4 w-4" />
                 Wait Time
+              </Link>
+              <Link
+                href="/best-time"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white font-medium rounded-lg hover:bg-amber-700 transition-colors"
+              >
+                <Calendar className="h-4 w-4" />
+                Best Time
               </Link>
               <SyncButton />
             </div>

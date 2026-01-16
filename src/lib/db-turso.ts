@@ -658,6 +658,67 @@ export async function getAllNeighbourhoods(): Promise<string[]> {
   return result.rows.map((row) => String(row.neighbourhood));
 }
 
+export interface MonthlyProcessingStats {
+  month: number;
+  count: number;
+  totalDays: number;
+  processingDays: number[];
+}
+
+export async function getProcessingTimeByMonth(
+  category?: string
+): Promise<MonthlyProcessingStats[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  let sql = `
+    SELECT
+      CAST(strftime('%m', application_date) AS INTEGER) as month,
+      processing_days
+    FROM permits
+    WHERE category != 'other'
+      AND processing_days IS NOT NULL
+      AND application_date IS NOT NULL
+  `;
+  const args: string[] = [];
+
+  if (category) {
+    sql += ` AND category = ?`;
+    args.push(category);
+  }
+
+  sql += ` ORDER BY month`;
+
+  const result = await db.execute({ sql, args });
+
+  // Group processing days by month
+  const byMonth: Map<number, number[]> = new Map();
+  for (let m = 1; m <= 12; m++) {
+    byMonth.set(m, []);
+  }
+
+  for (const row of result.rows) {
+    const month = Number(row.month);
+    const days = Number(row.processing_days);
+    byMonth.get(month)?.push(days);
+  }
+
+  // Convert to stats array
+  const stats: MonthlyProcessingStats[] = [];
+  for (let m = 1; m <= 12; m++) {
+    const days = byMonth.get(m) || [];
+    const total = days.reduce((sum, d) => sum + d, 0);
+    stats.push({
+      month: m,
+      count: days.length,
+      totalDays: total,
+      processingDays: days.sort((a, b) => a - b),
+    });
+  }
+
+  return stats;
+}
+
 export async function logSync(type: string, count: number, status: 'completed' | 'failed', errorMessage?: string): Promise<void> {
   const db = getClient();
   if (!db) return;
