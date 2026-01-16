@@ -719,6 +719,72 @@ export async function getProcessingTimeByMonth(
   return stats;
 }
 
+export async function getPermitDescriptions(): Promise<{
+  id: string;
+  description: string;
+  neighbourhood: string | null;
+  category: string;
+  processingDays: number | null;
+  applicationDate: string;
+}[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  const result = await db.execute(`
+    SELECT
+      id,
+      description,
+      neighbourhood,
+      category,
+      processing_days,
+      application_date
+    FROM permits
+    WHERE category != 'other'
+      AND description IS NOT NULL
+      AND description != ''
+  `);
+
+  return result.rows.map((row) => ({
+    id: String(row.id),
+    description: String(row.description),
+    neighbourhood: row.neighbourhood ? String(row.neighbourhood) : null,
+    category: String(row.category),
+    processingDays: row.processing_days ? Number(row.processing_days) : null,
+    applicationDate: String(row.application_date || ''),
+  }));
+}
+
+export async function getRecentPermitsByNeighbourhood(
+  neighbourhood: string,
+  limit: number = 20
+): Promise<{
+  address: string;
+  category: string;
+  status: string;
+  applicationDate: string;
+}[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  const result = await db.execute({
+    sql: `
+      SELECT address, category, status, application_date
+      FROM permits
+      WHERE neighbourhood = ? AND category != 'other'
+      ORDER BY application_date DESC
+      LIMIT ?
+    `,
+    args: [neighbourhood, limit],
+  });
+
+  return result.rows.map((row) => ({
+    address: String(row.address || ''),
+    category: String(row.category),
+    status: String(row.status || ''),
+    applicationDate: String(row.application_date || ''),
+  }));
+}
+
 export async function logSync(type: string, count: number, status: 'completed' | 'failed', errorMessage?: string): Promise<void> {
   const db = getClient();
   if (!db) return;

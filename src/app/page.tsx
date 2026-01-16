@@ -4,7 +4,7 @@ import { KPICards } from '@/components/dashboard/kpi-cards';
 import { AllCharts } from '@/components/dashboard/charts';
 import { PermitMap } from '@/components/dashboard/map';
 import { DataTable } from '@/components/dashboard/data-table';
-import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare, Clock, Calendar } from 'lucide-react';
+import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare, Clock, Calendar, Calculator, Users, FileText } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -175,6 +175,27 @@ export default async function Home() {
               >
                 <Calendar className="h-4 w-4" />
                 Best Time
+              </Link>
+              <Link
+                href="/roi-calculator"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors"
+              >
+                <Calculator className="h-4 w-4" />
+                ROI
+              </Link>
+              <Link
+                href="/contractors"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-orange-600 text-white font-medium rounded-lg hover:bg-orange-700 transition-colors"
+              >
+                <Users className="h-4 w-4" />
+                Contractors
+              </Link>
+              <Link
+                href="/reports"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-sky-600 text-white font-medium rounded-lg hover:bg-sky-700 transition-colors"
+              >
+                <FileText className="h-4 w-4" />
+                Reports
               </Link>
               <SyncButton />
             </div>
