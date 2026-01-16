@@ -4,7 +4,7 @@ import { KPICards } from '@/components/dashboard/kpi-cards';
 import { AllCharts } from '@/components/dashboard/charts';
 import { PermitMap } from '@/components/dashboard/map';
 import { DataTable } from '@/components/dashboard/data-table';
-import { RefreshCw, Home as HomeIcon, TrendingUp, Flame } from 'lucide-react';
+import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -154,6 +154,13 @@ export default async function Home() {
               >
                 <Flame className="h-4 w-4" />
                 Hot Zones
+              </Link>
+              <Link
+                href="/compare"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                <GitCompare className="h-4 w-4" />
+                Compare
               </Link>
               <SyncButton />
             </div>
