@@ -4,7 +4,7 @@ import { KPICards } from '@/components/dashboard/kpi-cards';
 import { AllCharts } from '@/components/dashboard/charts';
 import { PermitMap } from '@/components/dashboard/map';
 import { DataTable } from '@/components/dashboard/data-table';
-import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare, Clock, Calendar, Calculator, Users, FileText } from 'lucide-react';
+import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare, Clock, Calendar, Calculator, Users, FileText, MapPin } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -196,6 +196,13 @@ export default async function Home() {
               >
                 <FileText className="h-4 w-4" />
                 Reports
+              </Link>
+              <Link
+                href="/address-lookup"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-teal-600 text-white font-medium rounded-lg hover:bg-teal-700 transition-colors"
+              >
+                <MapPin className="h-4 w-4" />
+                Address Lookup
               </Link>
               <SyncButton />
             </div>

@@ -785,6 +785,82 @@ export async function getRecentPermitsByNeighbourhood(
   }));
 }
 
+export async function getPermitsNearLocation(
+  lat: number,
+  lng: number,
+  radiusKm: number = 1
+): Promise<{
+  id: string;
+  address: string;
+  category: string;
+  status: string;
+  latitude: number;
+  longitude: number;
+  distance: number;
+  applicationDate: string;
+  neighbourhood: string | null;
+}[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  // Fetch all permits with coordinates
+  const result = await db.execute({
+    sql: `
+      SELECT id, address, category, status, latitude, longitude, application_date, neighbourhood
+      FROM permits
+      WHERE latitude IS NOT NULL
+        AND longitude IS NOT NULL
+        AND category != 'other'
+    `,
+    args: [],
+  });
+
+  // Calculate distance using Haversine formula and filter
+  const permits = result.rows
+    .map((row) => {
+      const permitLat = Number(row.latitude);
+      const permitLng = Number(row.longitude);
+      const distance = haversineDistance(lat, lng, permitLat, permitLng);
+
+      return {
+        id: String(row.id),
+        address: String(row.address || ''),
+        category: String(row.category),
+        status: String(row.status || ''),
+        latitude: permitLat,
+        longitude: permitLng,
+        distance,
+        applicationDate: String(row.application_date || ''),
+        neighbourhood: row.neighbourhood ? String(row.neighbourhood) : null,
+      };
+    })
+    .filter((p) => p.distance <= radiusKm)
+    .sort((a, b) => a.distance - b.distance);
+
+  return permits;
+}
+
+// Haversine formula to calculate distance between two coordinates in km
+function haversineDistance(
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number
+): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function toRad(deg: number): number {
+  return deg * (Math.PI / 180);
+}
+
 export async function logSync(type: string, count: number, status: 'completed' | 'failed', errorMessage?: string): Promise<void> {
   const db = getClient();
   if (!db) return;
