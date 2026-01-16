@@ -453,6 +453,97 @@ export async function getAvgCompletionDaysByNeighbourhood(): Promise<Record<stri
   return avgByNeighbourhood;
 }
 
+export async function getPermitsByMonthAndNeighbourhood(
+  months: number = 12
+): Promise<{ neighbourhood: string; month: string; permits: number; units: number }[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  const result = await db.execute({
+    sql: `
+      SELECT
+        neighbourhood,
+        strftime('%Y-%m', application_date) as month,
+        COUNT(*) as permits,
+        SUM(dwelling_units_created) as units
+      FROM permits
+      WHERE category != 'other'
+        AND neighbourhood IS NOT NULL
+        AND application_date >= date('now', '-' || ? || ' months')
+      GROUP BY neighbourhood, month
+      ORDER BY neighbourhood, month
+    `,
+    args: [months],
+  });
+
+  return result.rows.map((row) => ({
+    neighbourhood: String(row.neighbourhood),
+    month: String(row.month),
+    permits: Number(row.permits) || 0,
+    units: Number(row.units) || 0,
+  }));
+}
+
+export async function getYearOverYearStats(): Promise<
+  { neighbourhood: string; thisYear: number; lastYear: number; thisYearUnits: number; lastYearUnits: number }[]
+> {
+  const db = getClient();
+  if (!db) return [];
+
+  const currentYear = new Date().getFullYear();
+  const lastYear = currentYear - 1;
+
+  const result = await db.execute({
+    sql: `
+      SELECT
+        neighbourhood,
+        COUNT(*) FILTER (WHERE strftime('%Y', application_date) = ?) as this_year,
+        COUNT(*) FILTER (WHERE strftime('%Y', application_date) = ?) as last_year,
+        SUM(dwelling_units_created) FILTER (WHERE strftime('%Y', application_date) = ?) as this_year_units,
+        SUM(dwelling_units_created) FILTER (WHERE strftime('%Y', application_date) = ?) as last_year_units
+      FROM permits
+      WHERE category != 'other'
+        AND neighbourhood IS NOT NULL
+      GROUP BY neighbourhood
+    `,
+    args: [currentYear.toString(), lastYear.toString(), currentYear.toString(), lastYear.toString()],
+  });
+
+  return result.rows.map((row) => ({
+    neighbourhood: String(row.neighbourhood),
+    thisYear: Number(row.this_year) || 0,
+    lastYear: Number(row.last_year) || 0,
+    thisYearUnits: Number(row.this_year_units) || 0,
+    lastYearUnits: Number(row.last_year_units) || 0,
+  }));
+}
+
+export async function getNeighbourhoodCoordinates(): Promise<
+  { neighbourhood: string; latitude: number; longitude: number }[]
+> {
+  const db = getClient();
+  if (!db) return [];
+
+  const result = await db.execute(`
+    SELECT
+      neighbourhood,
+      AVG(latitude) as lat,
+      AVG(longitude) as lng
+    FROM permits
+    WHERE category != 'other'
+      AND neighbourhood IS NOT NULL
+      AND latitude IS NOT NULL
+      AND longitude IS NOT NULL
+    GROUP BY neighbourhood
+  `);
+
+  return result.rows.map((row) => ({
+    neighbourhood: String(row.neighbourhood),
+    latitude: Number(row.lat),
+    longitude: Number(row.lng),
+  }));
+}
+
 export async function logSync(type: string, count: number, status: 'completed' | 'failed', errorMessage?: string): Promise<void> {
   const db = getClient();
   if (!db) return;
