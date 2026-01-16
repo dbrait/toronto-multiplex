@@ -544,6 +544,120 @@ export async function getNeighbourhoodCoordinates(): Promise<
   }));
 }
 
+export async function getProcessingDaysData(
+  neighbourhood?: string,
+  category?: string
+): Promise<number[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  let sql = `
+    SELECT processing_days
+    FROM permits
+    WHERE processing_days IS NOT NULL
+      AND category != 'other'
+  `;
+  const args: (string | number)[] = [];
+
+  if (neighbourhood) {
+    sql += ` AND neighbourhood = ?`;
+    args.push(neighbourhood);
+  }
+
+  if (category) {
+    sql += ` AND category = ?`;
+    args.push(category);
+  }
+
+  sql += ` ORDER BY processing_days`;
+
+  const result = await db.execute({ sql, args });
+
+  return result.rows.map((row) => Number(row.processing_days));
+}
+
+export async function getProcessingTimeDistributionFiltered(
+  neighbourhood?: string,
+  category?: string
+): Promise<{ range: string; count: number }[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  let sql = `
+    SELECT
+      CASE
+        WHEN processing_days < 30 THEN '< 30 days'
+        WHEN processing_days < 60 THEN '30-60 days'
+        WHEN processing_days < 90 THEN '60-90 days'
+        WHEN processing_days < 180 THEN '90-180 days'
+        WHEN processing_days < 365 THEN '180-365 days'
+        ELSE '> 365 days'
+      END as range,
+      COUNT(*) as count
+    FROM permits
+    WHERE category != 'other' AND processing_days IS NOT NULL
+  `;
+  const args: (string | number)[] = [];
+
+  if (neighbourhood) {
+    sql += ` AND neighbourhood = ?`;
+    args.push(neighbourhood);
+  }
+
+  if (category) {
+    sql += ` AND category = ?`;
+    args.push(category);
+  }
+
+  sql += `
+    GROUP BY range
+    ORDER BY
+      CASE range
+        WHEN '< 30 days' THEN 1
+        WHEN '30-60 days' THEN 2
+        WHEN '60-90 days' THEN 3
+        WHEN '90-180 days' THEN 4
+        WHEN '180-365 days' THEN 5
+        ELSE 6
+      END
+  `;
+
+  const result = await db.execute({ sql, args });
+
+  return result.rows.map((row) => ({
+    range: String(row.range),
+    count: Number(row.count) || 0,
+  }));
+}
+
+export async function getAllCategories(): Promise<string[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  const result = await db.execute(`
+    SELECT DISTINCT category
+    FROM permits
+    WHERE category != 'other'
+    ORDER BY category
+  `);
+
+  return result.rows.map((row) => String(row.category));
+}
+
+export async function getAllNeighbourhoods(): Promise<string[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  const result = await db.execute(`
+    SELECT DISTINCT neighbourhood
+    FROM permits
+    WHERE neighbourhood IS NOT NULL
+    ORDER BY neighbourhood
+  `);
+
+  return result.rows.map((row) => String(row.neighbourhood));
+}
+
 export async function logSync(type: string, count: number, status: 'completed' | 'failed', errorMessage?: string): Promise<void> {
   const db = getClient();
   if (!db) return;

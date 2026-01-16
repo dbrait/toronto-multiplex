@@ -4,7 +4,7 @@ import { KPICards } from '@/components/dashboard/kpi-cards';
 import { AllCharts } from '@/components/dashboard/charts';
 import { PermitMap } from '@/components/dashboard/map';
 import { DataTable } from '@/components/dashboard/data-table';
-import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare } from 'lucide-react';
+import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare, Clock } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -161,6 +161,13 @@ export default async function Home() {
               >
                 <GitCompare className="h-4 w-4" />
                 Compare
+              </Link>
+              <Link
+                href="/processing-time"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white font-medium rounded-lg hover:bg-cyan-700 transition-colors"
+              >
+                <Clock className="h-4 w-4" />
+                Wait Time
               </Link>
               <SyncButton />
             </div>
