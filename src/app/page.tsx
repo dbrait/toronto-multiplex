@@ -4,7 +4,7 @@ import { KPICards } from '@/components/dashboard/kpi-cards';
 import { AllCharts } from '@/components/dashboard/charts';
 import { PermitMap } from '@/components/dashboard/map';
 import { DataTable } from '@/components/dashboard/data-table';
-import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare, Clock, Calendar, Calculator, Users, FileText, MapPin } from 'lucide-react';
+import { RefreshCw, Home as HomeIcon, TrendingUp, Flame, GitCompare, Clock, Calendar, Calculator, Users, FileText, MapPin, Play, Building } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -203,6 +203,20 @@ export default async function Home() {
               >
                 <MapPin className="h-4 w-4" />
                 Address Lookup
+              </Link>
+              <Link
+                href="/heatmap-timeline"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-violet-600 text-white font-medium rounded-lg hover:bg-violet-700 transition-colors"
+              >
+                <Play className="h-4 w-4" />
+                Timeline
+              </Link>
+              <Link
+                href="/density-impact"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-rose-600 text-white font-medium rounded-lg hover:bg-rose-700 transition-colors"
+              >
+                <Building className="h-4 w-4" />
+                Density
               </Link>
               <SyncButton />
             </div>

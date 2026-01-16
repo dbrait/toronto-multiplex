@@ -312,6 +312,67 @@ export async function getMonthlyTrends(months: number = 24): Promise<{ month: st
   }));
 }
 
+export async function getPermitsByMonth(months: number = 24): Promise<{
+  month: string;
+  permits: {
+    latitude: number;
+    longitude: number;
+    category: string;
+    address: string;
+    neighbourhood: string | null;
+  }[];
+}[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  const result = await db.execute({
+    sql: `
+      SELECT
+        strftime('%Y-%m', application_date) as month,
+        latitude,
+        longitude,
+        category,
+        address,
+        neighbourhood
+      FROM permits
+      WHERE category != 'other'
+        AND latitude IS NOT NULL
+        AND longitude IS NOT NULL
+        AND application_date >= date('now', '-' || ? || ' months')
+      ORDER BY application_date ASC
+    `,
+    args: [months],
+  });
+
+  // Group permits by month
+  const monthMap = new Map<string, {
+    latitude: number;
+    longitude: number;
+    category: string;
+    address: string;
+    neighbourhood: string | null;
+  }[]>();
+
+  for (const row of result.rows) {
+    const month = String(row.month);
+    if (!monthMap.has(month)) {
+      monthMap.set(month, []);
+    }
+    monthMap.get(month)!.push({
+      latitude: Number(row.latitude),
+      longitude: Number(row.longitude),
+      category: String(row.category),
+      address: String(row.address || ''),
+      neighbourhood: row.neighbourhood ? String(row.neighbourhood) : null,
+    });
+  }
+
+  // Convert to sorted array
+  return [...monthMap.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([month, permits]) => ({ month, permits }));
+}
+
 export async function getCategoryBreakdown(): Promise<{ category: string; count: number; units: number }[]> {
   const db = getClient();
   if (!db) return [];
