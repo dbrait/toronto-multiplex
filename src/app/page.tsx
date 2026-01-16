@@ -4,7 +4,7 @@ import { KPICards } from '@/components/dashboard/kpi-cards';
 import { AllCharts } from '@/components/dashboard/charts';
 import { PermitMap } from '@/components/dashboard/map';
 import { DataTable } from '@/components/dashboard/data-table';
-import { RefreshCw, Home as HomeIcon } from 'lucide-react';
+import { RefreshCw, Home as HomeIcon, TrendingUp } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -139,7 +139,14 @@ export default async function Home() {
                 className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors"
               >
                 <HomeIcon className="h-4 w-4" />
-                ADU Feasibility Score
+                ADU Feasibility
+              </Link>
+              <Link
+                href="/housing-forecast"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white font-medium rounded-lg hover:bg-purple-700 transition-colors"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Supply Forecast
               </Link>
               <SyncButton />
             </div>

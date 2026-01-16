@@ -389,6 +389,70 @@ export async function getPermitsWithCoordinates(): Promise<{ latitude: number; l
   }));
 }
 
+export async function getActivePermitsWithIssuedDates(): Promise<ProcessedPermit[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  const result = await db.execute(`
+    SELECT * FROM permits
+    WHERE category != 'other'
+      AND status IN ('Active', 'Permit Issued', 'Under Review', 'In Progress')
+      AND issued_date IS NOT NULL
+      AND neighbourhood IS NOT NULL
+    ORDER BY issued_date DESC
+  `);
+
+  return result.rows.map(rowToPermit);
+}
+
+export async function getHistoricalCompletions(months: number = 24): Promise<{ month: string; units: number }[]> {
+  const db = getClient();
+  if (!db) return [];
+
+  const result = await db.execute({
+    sql: `
+      SELECT
+        strftime('%Y-%m', completed_date) as month,
+        SUM(dwelling_units_created) as units
+      FROM permits
+      WHERE category != 'other'
+        AND completed_date IS NOT NULL
+        AND completed_date >= date('now', '-' || ? || ' months')
+      GROUP BY month
+      ORDER BY month ASC
+    `,
+    args: [months],
+  });
+
+  return result.rows.map((row) => ({
+    month: String(row.month),
+    units: Number(row.units) || 0,
+  }));
+}
+
+export async function getAvgCompletionDaysByNeighbourhood(): Promise<Record<string, number>> {
+  const db = getClient();
+  if (!db) return {};
+
+  const result = await db.execute(`
+    SELECT
+      neighbourhood,
+      AVG(completion_days) as avg_completion
+    FROM permits
+    WHERE category != 'other'
+      AND completion_days IS NOT NULL
+      AND neighbourhood IS NOT NULL
+    GROUP BY neighbourhood
+  `);
+
+  const avgByNeighbourhood: Record<string, number> = {};
+  for (const row of result.rows) {
+    const neighbourhood = String(row.neighbourhood);
+    avgByNeighbourhood[neighbourhood] = Math.round(Number(row.avg_completion) || 180);
+  }
+  return avgByNeighbourhood;
+}
+
 export async function logSync(type: string, count: number, status: 'completed' | 'failed', errorMessage?: string): Promise<void> {
   const db = getClient();
   if (!db) return;
